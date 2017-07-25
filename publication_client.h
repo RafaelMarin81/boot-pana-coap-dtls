@@ -4,13 +4,14 @@
 #include "er-coap-engine.h"
 
 /* definitions */
-#define LOCAL_PORT      UIP_HTONS(COAP_DEFAULT_PORT+1)
-#define REMOTE_PORT     UIP_HTONS(20220)
 
 #define TOGGLE_INTERVAL 10
 
 extern uint8_t capabilityToken[800];
 extern uint16_t  capabilityTokenLen;
+
+uint8_t more;
+
 
 PROCESS_NAME(publication_client);
 

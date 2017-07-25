@@ -21,20 +21,24 @@
 #endif
 
 
+#include "dev/serial-line.h"
+#include "dev/uart1.h"
+
 #include "boot-pub-manager.h"
 #include "rest-engine.h"
+#include "er-coap-engine.h"
 #include "publication_client.h"
-#include "dtls-client.h"
+
 #include "panatiki.h"
 
 
 
-#define STARTED 	 	0
-#define COMPLETED 	 	1
-#define FAILED 		       -1
+#define STARTED	 		 0
+#define COMPLETED 		 1
+#define FAILED 		  	-1
 
-#define BOOT_TASK		1
-#define NEW_PNR_TASK		2
+#define BOOT_TASK		 1
+#define NEW_PNR_TASK		 2
 
 
 extern int dtlsFinishedHandshake;
@@ -53,8 +57,27 @@ void clearEvent(){
 
   PROCESS_BEGIN();
 
+	{
+		uart1_set_input(serial_line_input_byte);
+		serial_line_init();
+	}
+
+
 	int state 	= BOOT_TASK;
 	int outcome 	= STARTED;
+
+	printf_color(BLU, "\nBootstrapping and Publication in Smart Object\n");
+
+	printf_color(CYN, "-----------------------------------------------\n");
+	printf_color(CYN, "PHASE 1: BOOTSTRAPPING: NETWORK AUTHENTICATION \n");
+	printf_color(CYN, "-----------------------------------------------\n");
+	
+  printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
+	while(ev != serial_line_event_message){
+		PROCESS_YIELD();
+	}
+
+	printf_color(CYN, "Starting PANATIKI...\n");
 
 	process_start(&panatiki_process,NULL);
 
@@ -62,105 +85,90 @@ void clearEvent(){
 	while(outcome != COMPLETED){
 
 		YIELD:
-		printf("HANDLER: Before Process Yield\n");
+		printf_color(CYN, "Waiting for the Bootstrapping to complete PANATIKI...\n");
 		PROCESS_YIELD();
-		printf("HANDLER: Event %d , Data: %s \n", ev,data);
 
 		if(outcome != COMPLETED && ev == PROCESS_EVENT_TIMER && etimer_expired(&mainTimer)){
-			printf("HANDLER: mainTimer\n");
-			process_post(&panatiki_process, PROCESS_EVENT_INIT, 
-				     "Requesting to start again the Bootstrapping \0");
+			printf_color(CYN, "Retrying Bootstrapping...\n");
+			process_post(&panatiki_process, PROCESS_EVENT_INIT,
+				     "Requesting to start again the Bootstrapping");
+			
 			goto YIELD;	
 		}
 
 		// Waiting for the bootstrapping to finish
-		if(ev == PROCESS_EVENT_CONTINUE){
-			if(strstr(data, "failed")){
-				printf("Bootstrapping failed\n");
+		if(ev == PROCESS_EVENT_FAILURE){
+				printf_color(RED,"Failed: ");
+				printf_color(RED, data);
 				outcome = FAILED;
 				etimer_set(&mainTimer, 5 * CLOCK_SECOND);
 				clearEvent();
-			}
-			else 
-			if(strstr(data, "completed")){
-				printf("Bootstrapping completed\n");
+		}
+		else if(ev == PROCESS_EVENT_SUCCESS){
+				printf_color(GRN,"Success: ");
+				printf_color(GRN, data);
 				outcome = COMPLETED;
 				etimer_set(&mainTimer, 10 * CLOCK_SECOND);
 				clearEvent();
-			}
 		}
 
 
 	}	
 
+	printf_color(CYN, "Bootstrapping Completed \n");
+	// Waiting for keyboard event
 
-	// 2nd we request the CT
-	state = NEW_PNR_TASK;
-	outcome = STARTED; 
-
-	process_post(&panatiki_process, PROCESS_EVENT_CONTINUE, 
-		     "Requesting to get a Capability Token \0");
-
-	while(outcome != COMPLETED){
-
-		CT_YIELD:
-		printf("HANDLER: CT: Before Process Yield\n");
+  printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
+	while(ev != serial_line_event_message){
 		PROCESS_YIELD();
-		printf("HANDLER: CT: Event %d , Data: %s \n", ev,data);
-
-		if(outcome != COMPLETED && ev == PROCESS_EVENT_TIMER && etimer_expired(&mainTimer)){
-			printf("HANDLER: CT: mainTimer\n");
-			process_post(&panatiki_process, PROCESS_EVENT_CONTINUE, 
-				     "Requesting to get a Capability Token \0");
-			goto CT_YIELD;	
-		}
-
-		// Waiting for the bootstrapping to finish
-		if(ev == PROCESS_EVENT_CONTINUE){
-			if(strstr(data, "failed")){
-				printf("Capability Token failed\n");
-				outcome = FAILED;
-				etimer_set(&mainTimer, 5 * CLOCK_SECOND);
-				clearEvent();
-			}
-			else 
-			if(strstr(data, "completed")){
-				printf("Capability Token completed\n");
-				outcome = COMPLETED;
-				etimer_set(&mainTimer, 10 * CLOCK_SECOND);
-				clearEvent();
-			}
-		}
-	}	
-	
-    if(capabilityTokenLen > 0)
-	{	
-		printf("HANDLER: We Got the Capability Token (%d) \n",capabilityTokenLen);
-        printf_hex(capabilityToken,capabilityTokenLen);
-	}
-	else{
-		printf("HANDLER: We DIDN'T Got the Capability Token \n");
 	}
 
 
-//////////////////////////////////
+  printf_color(YEL, "-----------------------------------------------\n");
+  printf_color(YEL, "PHASE 3: PUBLICATION \n");
+  printf_color(YEL, "-----------------------------------------------\n");
 
-  printf("HANDLER: WE START DTLS\n");
+  printf_color(YEL,"Starting DTLS connection... ");
   // Initialize the REST engine.   
   rest_init_engine();
 
-  static struct etimer et;
-  etimer_set(&et, 3 * CLOCK_SECOND);
+  printf_color(YEL,"Waiting for DTLS to connect... ");
+
+ // static struct etimer et;
+  etimer_set(&mainTimer, 20 * CLOCK_SECOND);
   do {
     PROCESS_YIELD();
-    if(etimer_expired(&et) && !dtlsFinishedHandshake) {
-      PRINTF("boot-pub-manager waiting\n");
-      etimer_restart(&et);
+    if(etimer_expired(&mainTimer) && !dtlsFinishedHandshake) {
+     printf_color(YEL,"Restarting DTLS connection... ");
+     process_post(&coap_engine, PROCESS_EVENT_INIT, "Start again DTLS");
+
+     etimer_restart(&mainTimer);
     }
   } while(!dtlsFinishedHandshake);
 
+   printf_color(GRN,"DTLS connected successfully ");
+   printf_color(YEL,"Starting publication ");
 
-    process_start(&publication_client,NULL);
+
+ 	 process_start(&publication_client,NULL);
+     
+   etimer_set(&mainTimer, 20 * CLOCK_SECOND);
+	 	
+
+	 static int publication_counter = 1;
+
+	 do {
+			publication_counter++;
+			PROCESS_YIELD();
+
+			if( ev == PROCESS_EVENT_TIMER  && etimer_expired(&mainTimer) && !more){
+				process_post(&publication_client, PROCESS_EVENT_CONTINUE, 
+						   "Requesting to publish again");
+			}
+		   etimer_restart(&mainTimer);
+	 } while(publication_counter < 4);
+
 
     PROCESS_END();
+
 }
