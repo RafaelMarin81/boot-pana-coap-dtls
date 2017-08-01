@@ -88,10 +88,10 @@ APPS += rest-engine
 # Compile parameters
 #============================
 
-#CONTIKI = ../../contiki
+CONTIKI_HOME = ../contiki-odins-msp430
 
-ifdef CONTIKI_ODINS_HOME
-MIST=$(CONTIKI_ODINS_HOME)
+ifdef CONTIKI_HOME
+MIST=$(CONTIKI_HOME)
 else
 MIST=../..
 endif

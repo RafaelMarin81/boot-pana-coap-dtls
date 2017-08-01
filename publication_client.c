@@ -23,8 +23,8 @@ PROCESS(publication_client, "Publishing Information");
 #define SERVER_NODE(ipaddr)   uip_ip6addr(ipaddr, 0xaaaa, 0, 0, 0, 0, 0, 0, 0x1)
 
 uip_ipaddr_t server_ipaddr;
-static struct etimer et;
-static int sent = 0;
+//static struct etimer et;
+//static int sent = 0;
 
 char endp[64];
 
@@ -39,10 +39,10 @@ client_chunk_handler(void *response)
   endp[0] = '/';
   memcpy(endp+1, str, len);
   endp[len] = '\0';
-  //printf("Location-path: %s\n", endp);
+  printf("Location-path: %s\n", endp);
 
   len = coap_get_payload(response, &chunk);
-  //PRINT("|%.*s", len, (char *)chunk);
+  printf("|%.*s", len, (char *)chunk);
 
 }
 
@@ -60,7 +60,7 @@ PROCESS_THREAD(publication_client, ev, data)
 {
   PROCESS_BEGIN();
 
-	printf_color(YEL,"\Publication Client Started \n");
+	printf_color(YEL,"Publication Client Started \n");
 //  sprintf(publication,"[%s][temp 21 grades][%s]",TARGET, capabilityToken);
 
 
@@ -68,11 +68,12 @@ PROCESS_THREAD(publication_client, ev, data)
 
   SERVER_NODE(&server_ipaddr);
 	memset(publication, 0, 900);
-  sprintf(publication,"[%s][{\"temp\": \"21\"}][%s]",TARGET, capabilityToken);
+  //sprintf(publication,"[%s][{\"temp\": \"21\"}][%s]",TARGET, capabilityToken);
+  sprintf(publication,"[{\"temp\": \"21\"}]");
 
   /* prepare request, TID is set by COAP_BLOCKING_REQUEST() */
   coap_init_message(request, COAP_TYPE_CON, COAP_POST, 0);
-  coap_set_header_uri_path(request, "/translator");
+  coap_set_header_uri_path(request, "/secure_bootstrapping");
 	
 //	coap_set_header_block1(void *packet, uint32_t num, uint8_t more, uint16_t size);
 	i								= 0; 
@@ -97,7 +98,9 @@ PROCESS_THREAD(publication_client, ev, data)
 		coap_set_header_block1(request, chunk_number, more, size);
 		coap_set_payload(request, &publication[i],size);
 		
-		COAP_BLOCKING_REQUEST(&server_ipaddr, UIP_HTONS(20218 + node_id), request, client_chunk_handler);
+		//COAP_BLOCKING_REQUEST(&server_ipaddr, UIP_HTONS(20218 + node_id), request, client_chunk_handler);
+
+		COAP_BLOCKING_REQUEST(&server_ipaddr, UIP_HTONS(20220), request, client_chunk_handler);   //  Fixed port of 20220 with Californium-server
 
 		if(i%2 == 0)
 				printf(". ");

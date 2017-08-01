@@ -8,7 +8,10 @@
 #include "dev/button-sensor.h"
 #endif
 
-#define DEBUG 1
+#define DEBUG 1 //DEBUG_PRINT
+#include "net/uip-debug.h"
+
+/*#define DEBUG 1
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -18,7 +21,7 @@
 #define PRINTF(...)
 #define PRINT6ADDR(addr)
 #define PRINTLLADDR(addr)
-#endif
+#endif*/
 
 
 #include "dev/serial-line.h"
@@ -55,7 +58,7 @@ void clearEvent(){
 	memset(data,0,strlen(data));
 }
 
-  PROCESS_BEGIN();
+    PROCESS_BEGIN();
 
 	{
 		uart1_set_input(serial_line_input_byte);
@@ -63,8 +66,8 @@ void clearEvent(){
 	}
 
 
-	int state 	= BOOT_TASK;
-	int outcome 	= STARTED;
+	//static int state 	= BOOT_TASK;  // No-used
+	static int outcome 	= STARTED;
 
 	printf_color(BLU, "\nBootstrapping and Publication in Smart Object\n");
 
@@ -72,16 +75,17 @@ void clearEvent(){
 	printf_color(CYN, "PHASE 1: BOOTSTRAPPING: NETWORK AUTHENTICATION \n");
 	printf_color(CYN, "-----------------------------------------------\n");
 	
-  printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
+    printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
 	while(ev != serial_line_event_message){
 		PROCESS_YIELD();
 	}
 
 	printf_color(CYN, "Starting PANATIKI...\n");
 
-	process_start(&panatiki_process,NULL);
+	process_start(&panatiki_process,NULL);		// PANATIKI dows retries to connect until infinite.
 
 	// 1st we complete the bootstrapping process.	
+        //etimer_set(&mainTimer, 10 * CLOCK_SECOND);	// 20 seconds to restarting the DTLS connection.
 	while(outcome != COMPLETED){
 
 		YIELD:
@@ -118,7 +122,7 @@ void clearEvent(){
 	printf_color(CYN, "Bootstrapping Completed \n");
 	// Waiting for keyboard event
 
-  printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
+    printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
 	while(ev != serial_line_event_message){
 		PROCESS_YIELD();
 	}
@@ -135,7 +139,7 @@ void clearEvent(){
   printf_color(YEL,"Waiting for DTLS to connect... ");
 
  // static struct etimer et;
-  etimer_set(&mainTimer, 20 * CLOCK_SECOND);
+  etimer_set(&mainTimer, 20 * CLOCK_SECOND);	// 20 seconds to restarting the DTLS connection.
   do {
     PROCESS_YIELD();
     if(etimer_expired(&mainTimer) && !dtlsFinishedHandshake) {
@@ -152,7 +156,7 @@ void clearEvent(){
 
  	 process_start(&publication_client,NULL);
      
-   etimer_set(&mainTimer, 20 * CLOCK_SECOND);
+         etimer_set(&mainTimer, 20 * CLOCK_SECOND);
 	 	
 
 	 static int publication_counter = 1;
@@ -166,7 +170,7 @@ void clearEvent(){
 						   "Requesting to publish again");
 			}
 		   etimer_restart(&mainTimer);
-	 } while(publication_counter < 4);
+	 } while(publication_counter < 20);		// Number of publications.
 
 
     PROCESS_END();

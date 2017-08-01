@@ -1,18 +1,20 @@
-#ifndef __BOOT-PUB-MANAGER_H__
-#define __BOOT-PUB-MANAGER_H__
+
+#ifndef __BOOT_PUB_MANAGER_H__
+#define __BOOT_PUB_MANAGER_H__
 
 #include "contiki.h"
 #include "contiki-lib.h"
 #include "contiki-net.h"
 
 #include <string.h>
+#include <stdio.h>
 
-#define DEBUG DEBUG_PRINT
-#include "net/uip-debug.h"
+//#define DEBUG DEBUG_PRINT
+//#include "net/uip-debug.h"
 
-#define DEVICE  "https:\/\/194.65.138.51"
+#define DEVICE  "https://194.65.138.51"
 
-#define TARGET "https:\/\/194.65.138.51/api/message/secure_bootstrapping"
+#define TARGET "https://194.65.138.51/api/message/secure_bootstrapping"
 #define ACTION "POST"
 
 #define PROCESS_EVENT_SUCCESS           137
@@ -20,7 +22,7 @@
 
 
 
-uint8_t capabilityToken[800];
+uint8_t capabilityToken[800];  // Reduce the RAM memory for not using the capability-tokens in Panatiki.
 uint16_t  capabilityTokenLen;
 extern uint8_t more;
 
@@ -49,6 +51,6 @@ void printf_color (const char* color, const char *message){
 
 
 
-#endif /* __BOOT-PUB-MANAGER_H__ */
+#endif /* __BOOT_PUB_MANAGER_H__ */
 
 
