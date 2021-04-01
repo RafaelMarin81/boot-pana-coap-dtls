@@ -4,6 +4,8 @@
 #include "contiki.h"
 #include "contiki-net.h"
 
+#include "oma_lwm2m.h"
+
 #if PLATFORM_HAS_BUTTON
 #include "dev/button-sensor.h"
 #endif
@@ -30,7 +32,8 @@
 #include "boot-pub-manager.h"
 #include "rest-engine.h"
 #include "er-coap-engine.h"
-#include "publication_client.h"
+
+//#include "publication_client.h"
 
 #include "panatiki.h"
 
@@ -75,10 +78,10 @@ void clearEvent(){
 	printf_color(CYN, "PHASE 1: BOOTSTRAPPING: NETWORK AUTHENTICATION \n");
 	printf_color(CYN, "-----------------------------------------------\n");
 	
-    printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
+/*    printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
 	while(ev != serial_line_event_message){
 		PROCESS_YIELD();
-	}
+	}*/
 
 	printf_color(CYN, "Starting PANATIKI...\n");
 
@@ -122,15 +125,18 @@ void clearEvent(){
 	printf_color(CYN, "Bootstrapping Completed \n");
 	// Waiting for keyboard event
 
-    printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
+/*    printf_color(BLU, "\n WAITING FOR KEY INTERRUPTION \n");	
 	while(ev != serial_line_event_message){
 		PROCESS_YIELD();
-	}
+	}*/
 
 
   printf_color(YEL, "-----------------------------------------------\n");
   printf_color(YEL, "PHASE 3: PUBLICATION \n");
   printf_color(YEL, "-----------------------------------------------\n");
+
+
+  printf_color(YEL,"Init the COAP Server. ");
 
   printf_color(YEL,"Starting DTLS connection... ");
   // Initialize the REST engine.   
@@ -151,6 +157,17 @@ void clearEvent(){
   } while(!dtlsFinishedHandshake);
 
    printf_color(GRN,"DTLS connected successfully ");
+
+   // Initialize the OMA LWM2M resources.   
+   printf_color(YEL,"Enabling COAP - OMA resources.");
+   oma_lwm2m_init();
+
+   // Initialize the Periodic-timers of Periodic-resources.   
+   printf_color(YEL,"Initing Periodic Resources.");
+   rest_init_periodic_resources();
+
+
+/*
    printf_color(YEL,"Starting publication ");
 
 
@@ -171,8 +188,24 @@ void clearEvent(){
 			}
 		   etimer_restart(&mainTimer);
 	 } while(publication_counter < 20);		// Number of publications.
+*/
 
+   /* Define application-specific events here. */
+   while(1) {
+       PROCESS_WAIT_EVENT();
+#if PLATFORM_HAS_BUTTON
+       if(ev == sensors_event && data == &button_sensor) {
+           PRINTF("*******BUTTON*******\n");
+           
+           /* Call the event_handler for this application-specific event. */
+           res_event.trigger();
+           
+           /* Also call the separate response example handler. */
+           res_separate.resume();
+       }
+#endif /* PLATFORM_HAS_BUTTON */
+   } /* while (1) */
 
-    PROCESS_END();
+   PROCESS_END();
 
 }

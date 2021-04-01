@@ -79,13 +79,12 @@
 
 /* Multiplies with chunk size, be aware of memory constraints. */
 #undef COAP_MAX_OPEN_TRANSACTIONS
-#define COAP_MAX_OPEN_TRANSACTIONS     1
+#define COAP_MAX_OPEN_TRANSACTIONS     4
 
 /* Must be <= open transactions, default is COAP_MAX_OPEN_TRANSACTIONS-1. */
-/*
-   #undef COAP_MAX_OBSERVERS
-   #define COAP_MAX_OBSERVERS             2
- */
+#undef COAP_MAX_OBSERVERS
+#define COAP_MAX_OBSERVERS             1
+
 
 /* Filtering .well-known/core per query can be disabled to save space. */
 #undef COAP_LINK_FORMAT_FILTERING
@@ -93,6 +92,6 @@
 #undef COAP_PROXY_OPTION_PROCESSING
 #define COAP_PROXY_OPTION_PROCESSING   0
 
-#define WITH_OMA_LWM2M  0
+#define WITH_OMA_LWM2M  1
 
 #endif /* __PROJECT_ERBIUM_CONF_H__ */
